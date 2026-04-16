@@ -21,6 +21,7 @@ import time
 #   --output_file "360p_qwen_requests.jsonl"
 
 # Please note everytime when you run the command, even with same arguments, the downloaded images will be different as each time it is a random image.
+# image content will be used when constructing the datasets
 def fetch_and_encode(url, label):
     """Downloads an image and returns its base64 string."""
     try:
