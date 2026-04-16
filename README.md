@@ -1,1 +1,0 @@
-# multi-modal-benchmark-helper
