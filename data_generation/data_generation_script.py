@@ -69,6 +69,8 @@ def main():
     parser.add_argument("--width", type=int, default=640, help="Custom image width (default: 640)")
     parser.add_argument("--height", type=int, default=360, help="Custom image height (default: 360)")
     parser.add_argument("--max_tokens", type=int, default=1, help="Max output token")
+    parser.add_argument("--model", type=str, default="Qwen/Qwen2.5-VL-7B-Instruct", help="Model name")
+
 
     args = parser.parse_args()
 
@@ -127,7 +129,7 @@ def main():
 
     print(f"Successfully generated {len(prompts)} unique prompts. Generating benchmark file...")
 
-    model_name = "Qwen/Qwen2.5-VL-7B-Instruct"
+    model_name = args.model
 
     warmup_requests = []
     main_requests = []
