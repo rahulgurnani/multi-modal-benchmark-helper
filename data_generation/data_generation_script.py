@@ -7,7 +7,7 @@ import itertools
 import concurrent.futures
 import time
 
-# python generate_benchmark.py \
+# python data_generation_script.py \
 #   --prefix_start 0 \  #start index to get prefix shared images pool
 #   --prefix_end 1000 \ #end index to get prefix shared images pool
 #   --var_start 1000 \  #start index to get distinct shared images pool
