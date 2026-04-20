@@ -43,10 +43,9 @@ def get_image_dimensions_from_base64(base64_string: str) -> tuple[int, int]:
     except Exception as e:
         raise ValueError(f"Failed to decode image or read dimensions: {e}")
 
-def calculate_image_tokens(width: int, height: int) -> dict:
+def calculate_image_tokens(width: int, height: int, factor:int) -> dict:
     """Calculates the exact theoretical token count for Qwen2.5-VL."""
-    FACTOR = 28
-    patches = (width * height) / (FACTOR * FACTOR)
+    patches = (width * height) / (factor * factor)
     tokens = patches + 2 # Add visual start/end markers
 
     return {
@@ -55,10 +54,10 @@ def calculate_image_tokens(width: int, height: int) -> dict:
         "tokens": tokens
     }
 
-def process_image_from_url(url: str) -> dict:
+def process_image_from_url(url: str, factor: int) -> dict:
     base64_string = fetch_image_as_base64(url)
     width, height = get_image_dimensions_from_base64(base64_string)
-    token_data = calculate_image_tokens(width, height)
+    token_data = calculate_image_tokens(width, height, factor)
 
     return {
         "original_width": width,
@@ -71,7 +70,7 @@ def save_result_to_file(filepath: str, data: dict):
     with open(filepath, 'a', encoding='utf-8') as f:
         f.write(json.dumps(data) + '\n')
 
-def run_token_comparison(resolutions: list[tuple[int, int]], endpoint: str, iterations: int, output_file: str, mode: str):
+def run_token_comparison(resolutions: list[tuple[int, int]], endpoint: str, iterations: int, output_file: str, model: str, factor: int):
     """
     Runs a test loop calculating theoretical tokens and comparing them
     against actual prompt tokens from the API response across multiple resolutions.
@@ -101,7 +100,7 @@ def run_token_comparison(resolutions: list[tuple[int, int]], endpoint: str, iter
 
             # 1. Calculate Theoretical Tokens Locally
             try:
-                local_result = process_image_from_url(image_url)
+                local_result = process_image_from_url(image_url, factor)
                 calculated_tokens = local_result['tokens']
                 record["calculated_image_tokens"] = calculated_tokens
             except Exception as e:
@@ -114,7 +113,7 @@ def run_token_comparison(resolutions: list[tuple[int, int]], endpoint: str, iter
 
             # 2. Prepare API Request Payload
             payload = {
-                "model": args.model,
+                "model": model,
                 "messages": [
                     {
                         "role": "user",
@@ -190,6 +189,7 @@ if __name__ == "__main__":
     parser.add_argument("--endpoint", type=str, default="http://34.132.102.66:80/v1/chat/completions", help="API endpoint URL")
     parser.add_argument("--output", type=str, default="token_results.jsonl", help="Output file to save JSONL results")
     parser.add_argument("--model", type=str, default="Qwen/Qwen2.5-VL-7B-Instruct")
+    parser.add_argument("--factor", type=int, default=28)
 
     args = parser.parse_args()
 
@@ -211,4 +211,4 @@ if __name__ == "__main__":
     if os.path.exists(args.output):
         open(args.output, 'w').close()
 
-    run_token_comparison(parsed_resolutions, args.endpoint, args.iterations, args.output, args.model)
+    run_token_comparison(parsed_resolutions, args.endpoint, args.iterations, args.output, args.model, args.factor)
