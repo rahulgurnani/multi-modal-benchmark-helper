@@ -52,11 +52,10 @@ def calculate_image_tokens(width: int, height: int) -> dict:
     return {
         "model_width": width,
         "model_height": height,
-        "qwen2_5_vl_tokens": tokens
+        "tokens": tokens
     }
 
 def process_image_from_url(url: str) -> dict:
-    """Wrapper function that handles the full URL -> Base64 -> Qwen2.5-VL Tokens pipeline."""
     base64_string = fetch_image_as_base64(url)
     width, height = get_image_dimensions_from_base64(base64_string)
     token_data = calculate_image_tokens(width, height)
@@ -64,7 +63,7 @@ def process_image_from_url(url: str) -> dict:
     return {
         "original_width": width,
         "original_height": height,
-        "tokens": token_data["qwen2_5_vl_tokens"]
+        "tokens": token_data["tokens"]
     }
 
 def save_result_to_file(filepath: str, data: dict):
@@ -72,7 +71,7 @@ def save_result_to_file(filepath: str, data: dict):
     with open(filepath, 'a', encoding='utf-8') as f:
         f.write(json.dumps(data) + '\n')
 
-def run_token_comparison(resolutions: list[tuple[int, int]], endpoint: str, iterations: int, output_file: str):
+def run_token_comparison(resolutions: list[tuple[int, int]], endpoint: str, iterations: int, output_file: str, mode: str):
     """
     Runs a test loop calculating theoretical tokens and comparing them
     against actual prompt tokens from the API response across multiple resolutions.
@@ -115,7 +114,7 @@ def run_token_comparison(resolutions: list[tuple[int, int]], endpoint: str, iter
 
             # 2. Prepare API Request Payload
             payload = {
-                "model": "Qwen/Qwen2.5-VL-7B-Instruct",
+                "model": args.model,
                 "messages": [
                     {
                         "role": "user",
@@ -178,7 +177,7 @@ def run_token_comparison(resolutions: list[tuple[int, int]], endpoint: str, iter
 # Configuration and Execution
 # ==========================================
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Calculate and compare Qwen2.5-VL image tokens across multiple resolutions.")
+    parser = argparse.ArgumentParser(description="Calculate and compare image tokens across multiple resolutions.")
 
     # Accept a list of resolution strings
     parser.add_argument(
@@ -190,6 +189,7 @@ if __name__ == "__main__":
     parser.add_argument("--iterations", type=int, default=10, help="Number of images to process per resolution (default: 10)")
     parser.add_argument("--endpoint", type=str, default="http://34.132.102.66:80/v1/chat/completions", help="API endpoint URL")
     parser.add_argument("--output", type=str, default="token_results.jsonl", help="Output file to save JSONL results")
+    parser.add_argument("--model", type=str, default="Qwen/Qwen2.5-VL-7B-Instruct")
 
     args = parser.parse_args()
 
@@ -211,4 +211,4 @@ if __name__ == "__main__":
     if os.path.exists(args.output):
         open(args.output, 'w').close()
 
-    run_token_comparison(parsed_resolutions, args.endpoint, args.iterations, args.output)
+    run_token_comparison(parsed_resolutions, args.endpoint, args.iterations, args.output, args.model)
