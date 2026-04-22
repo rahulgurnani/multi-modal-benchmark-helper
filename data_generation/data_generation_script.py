@@ -6,6 +6,12 @@ import urllib.request
 import itertools
 import concurrent.futures
 import time
+import ssl
+
+# Disable SSL verification to work around corporate MITM certificate interception.
+_SSL_CTX = ssl.create_default_context()
+_SSL_CTX.check_hostname = False
+_SSL_CTX.verify_mode = ssl.CERT_NONE
 
 # python data_generation_script.py \
 #   --prefix_start 0 \  #start index to get prefix shared images pool
@@ -26,7 +32,7 @@ def fetch_and_encode(url, label):
     """Downloads an image and returns its base64 string."""
     try:
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=15) as response:
+        with urllib.request.urlopen(req, timeout=15, context=_SSL_CTX) as response:
             return base64.b64encode(response.read()).decode('utf-8')
     except Exception as e:
         print(f"Failed to fetch {label}: {e}")
@@ -136,14 +142,17 @@ def main():
     request_count = 0
 
     # --- GENERATE WARM-UP REQUESTS ---
-    print("Generating 20 warm-up requests...")
-    combined_pool = variable_pool
-    for _ in range(20):
+    print("Generating 1 warm-up request with same shape as main requests...")
+    for _ in range(1):
         content_array = []
-        num_warmup_images = random.randint(1, 2)
-        warmup_images = random.sample(combined_pool, num_warmup_images)
+        
+        num_prefix_images = random.choice(args.prefix_image_choices)
+        group_prefix_images = random.sample(prefix_pool, min(num_prefix_images, len(prefix_pool)))
+        
+        num_var_images = random.choice(args.var_image_choices)
+        request_var_images = random.sample(variable_pool, min(num_var_images, len(variable_pool)))
 
-        for b64 in warmup_images:
+        for b64 in group_prefix_images:
             content_array.append({
                 "type": "image_url",
                 "image_url": {"url": f"data:image/jpeg;base64,{b64}"}
@@ -153,11 +162,17 @@ def main():
             "type": "text",
             "text": random.choice(prompts)
         })
+        
+        for b64 in request_var_images:
+            content_array.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b64}"}
+            })
 
         warmup_requests.append({
             "model": model_name,
             "messages": [{"role": "user", "content": content_array}],
-            "max_tokens": 100,
+            "max_tokens": args.max_tokens,
             "temperature": 1
         })
 
@@ -212,7 +227,7 @@ def main():
         for req in final_requests:
             f.write(json.dumps(req) + "\n")
 
-    print(f"Successfully saved {total_requests} total requests (20 warm-up + {request_count} main) to '{args.output_file}'.")
+    print(f"Successfully saved {total_requests} total requests (1 warm-up + {request_count} main) to '{args.output_file}'.")
 
 if __name__ == "__main__":
     main()
