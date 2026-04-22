@@ -62,7 +62,8 @@ def process_image_from_url(url: str, factor: int) -> dict:
     return {
         "original_width": width,
         "original_height": height,
-        "tokens": token_data["tokens"]
+        "tokens": token_data["tokens"],
+        "base64_string": base64_string  # Return base64 so we can reuse it in the API call
     }
 
 def save_result_to_file(filepath: str, data: dict):
@@ -70,12 +71,13 @@ def save_result_to_file(filepath: str, data: dict):
     with open(filepath, 'a', encoding='utf-8') as f:
         f.write(json.dumps(data) + '\n')
 
-def run_token_comparison(resolutions: list[tuple[int, int]], endpoint: str, iterations: int, output_file: str, model: str, factor: int):
+def run_token_comparison(resolutions: list[tuple[int, int]], endpoint: str, iterations: int, output_file: str, model: str, factor: int, mode: str):
     """
     Runs a test loop calculating theoretical tokens and comparing them
     against actual prompt tokens from the API response across multiple resolutions.
     """
     print(f"API Endpoint: {endpoint}")
+    print(f"Payload Mode: {mode.upper()}")
     print(f"Output File:  {os.path.abspath(output_file)}")
     print("-" * 50)
 
@@ -91,6 +93,7 @@ def run_token_comparison(resolutions: list[tuple[int, int]], endpoint: str, iter
                 "target_height": height,
                 "iteration": index,
                 "url": image_url,
+                "payload_mode": mode,
                 "status": "success",
                 "calculated_image_tokens": None,
                 "api_prompt_tokens": None,
@@ -98,10 +101,11 @@ def run_token_comparison(resolutions: list[tuple[int, int]], endpoint: str, iter
                 "error": None
             }
 
-            # 1. Calculate Theoretical Tokens Locally
+            # 1. Calculate Theoretical Tokens Locally and fetch base64
             try:
                 local_result = process_image_from_url(image_url, factor)
                 calculated_tokens = local_result['tokens']
+                base64_content = local_result['base64_string']
                 record["calculated_image_tokens"] = calculated_tokens
             except Exception as e:
                 error_msg = f"Local processing error: {e}"
@@ -111,7 +115,15 @@ def run_token_comparison(resolutions: list[tuple[int, int]], endpoint: str, iter
                 save_result_to_file(output_file, record)
                 continue
 
-            # 2. Prepare API Request Payload
+            # 2. Prepare API Request Payload based on selected mode
+            if mode == "base64":
+                # Prefix with standard data URI scheme for API ingestion
+                api_image_url = f"data:image/jpeg;base64,{base64_content}"
+            else:
+                api_image_url = image_url
+
+
+
             payload = {
                 "model": model,
                 "messages": [
@@ -121,7 +133,7 @@ def run_token_comparison(resolutions: list[tuple[int, int]], endpoint: str, iter
                             {
                                 "type": "image_url",
                                 "image_url": {
-                                    "url": image_url
+                                    "url": api_image_url
                                 }
                             },
                             {
@@ -191,6 +203,15 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, default="Qwen/Qwen2.5-VL-7B-Instruct")
     parser.add_argument("--factor", type=int, default=28)
 
+    # New argument to toggle payload mode
+    parser.add_argument(
+        "--mode",
+        type=str,
+        choices=["url", "base64"],
+        default="url",
+        help="Choose whether to send the 'url' directly or send the encoded 'base64' string to the API."
+    )
+
     args = parser.parse_args()
 
     # Parse the resolutions strings into a list of tuples (e.g. [(1920, 1280), (800, 600)])
@@ -207,8 +228,15 @@ if __name__ == "__main__":
         exit(1)
 
     # Clear the file or write a fresh one if you want it to overwrite every time
-    # (Remove the next two lines if you prefer to append across multiple script runs)
     if os.path.exists(args.output):
         open(args.output, 'w').close()
 
-    run_token_comparison(parsed_resolutions, args.endpoint, args.iterations, args.output, args.model, args.factor)
+    run_token_comparison(
+        parsed_resolutions,
+        args.endpoint,
+        args.iterations,
+        args.output,
+        args.model,
+        args.factor,
+        args.mode
+    )
