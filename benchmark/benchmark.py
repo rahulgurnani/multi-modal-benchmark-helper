@@ -325,8 +325,8 @@ if __name__ == "__main__":
                         help="Requests per second (default: 10)")
     parser.add_argument("--duration", type=float, default=60.0,
                         help="Duration to run the benchmark in seconds (default: 60)")
-    parser.add_argument("--warmup", type=int, default=20,
-                        help="Number of warmup requests to send (default: 20)")
+    parser.add_argument("--warmup", type=int, default=1,
+                        help="Number of warmup requests to send (default: 1)")
     parser.add_argument("--timeout", type=int, default=3600,
                         help="Per-request timeout in seconds (default: 3600 = 1 hour)")
     parser.add_argument("--model", type=str, default=None,
@@ -346,6 +346,8 @@ if __name__ == "__main__":
         args.output_file = f"res-{input_base}-{netloc}"
 
     # Run the main async loop with the parsed arguments
+    print(args.rps)
+    print(args.duration)
     asyncio.run(main(
         api_url=args.api_url,
         input_file=args.input_file,
