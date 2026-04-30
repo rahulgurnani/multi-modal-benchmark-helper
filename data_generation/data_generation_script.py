@@ -76,6 +76,8 @@ def main():
     parser.add_argument("--height", type=int, default=360, help="Custom image height (default: 360)")
     parser.add_argument("--max_tokens", type=int, default=1, help="Max output token")
     parser.add_argument("--model", type=str, default="Qwen/Qwen2.5-VL-7B-Instruct", help="Model name")
+    parser.add_argument("--warmup", type=int, default=1,
+                        help="Number of warmup requests to send (default: 1)")
 
 
     args = parser.parse_args()
@@ -95,6 +97,14 @@ def main():
         print(f"Using standard resolution {args.resolution} -> {width}x{height}")
     else:
         print(f"Using custom resolution -> {width}x{height}")
+
+    print(f"prefix_start is {args.prefix_start} and prefix_end is {args.prefix_end}")
+    print(f"var_start is {args.var_start} and var_end is {args.var_end}")
+    print(f"num_group is {args.num_groups} and requests_per_group is {args.requests_per_group}")
+    print(f"prefix_image_choices is {args.prefix_image_choices} and var_image_choices is {args.var_image_choices}")
+    print(f"width is {width} and height is {height}")
+    print(f"model is {args.model}")
+    print(f"warmup is {args.warmup}")
 
     print("Fetching image pools concurrently. This will be fast...")
     start_download_time = time.time()
@@ -142,8 +152,8 @@ def main():
     request_count = 0
 
     # --- GENERATE WARM-UP REQUESTS ---
-    print("Generating 1 warm-up request with same shape as main requests...")
-    for _ in range(1):
+    print(f"Generating {args.warmup} warm-up request with same shape as main requests...")
+    for _ in range(args.warmup):
         content_array = []
         
         num_prefix_images = random.choice(args.prefix_image_choices)
