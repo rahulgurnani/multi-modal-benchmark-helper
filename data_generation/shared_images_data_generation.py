@@ -57,7 +57,7 @@ def main():
     parser.add_argument("--resolution", type=str, choices=["180p", "360p", "720p", "1080p"], default="360p")
     parser.add_argument("--max_tokens", type=int, default=128, help="Max output tokens")
     parser.add_argument("--model", type=str, default="Qwen/Qwen2.5-VL-7B-Instruct", help="Model name")
-    parser.add_argument("--warmup", type=int, default=1, help="Number of warmup requests to send (default: 1)")
+    parser.add_argument("--warmup", type=int, default=20, help="Number of warmup requests to send (default: 20)")
 
     args = parser.parse_args()
 
